@@ -1,39 +1,70 @@
 import math
 
-# Responsabilità
-# Trasforma lo stato globale della simulazione in input locali per il controller.
-#
-# Compiti principali
-#
-# Calcola informazioni parziali sull’ambiente
-#
-# Fornisce al controller una rappresentazione osservabile dello stato
-#
-# Normalizza i valori per l’apprendimento evolutivo
-#
-# Nota concettuale
-# I sensori impongono un vincolo informativo: il robot non ha accesso allo stato completo.
 
-def compute_sensors(robot, enemy, arena_size):
-    dx = enemy.x - robot.x
-    dy = enemy.y - robot.y
+class Sensors:
+    """
+    Sensors are responsible for extracting a partial, numerical observation
+    of the environment for a given robot.
+    This observation will be fed directly to the neural network.
+    """
 
-    distance = math.hypot(dx, dy) / arena_size
-    angle_to_enemy = math.atan2(dy, dx)
-    relative_angle = angle_to_enemy - robot.angle
+    @staticmethod
+    def get(robot, arena):
+        """
+        Compute the sensor vector for a robot inside the arena.
 
-    wall_front = min(
-        robot.x / arena_size,
-        (arena_size - robot.x) / arena_size,
-        robot.y / arena_size,
-        (arena_size - robot.y) / arena_size,
-    )
+        Returns a list of floats with fixed size and ordering.
+        """
 
-    return [
-        distance,
-        math.sin(relative_angle),
-        math.cos(relative_angle),
-        wall_front,
-        robot.energy / 100.0,
-        enemy.energy / 100.0,
-    ]
+        opponent = Sensors._get_opponent(robot, arena)
+
+        # Relative position to opponent
+        dx = opponent.x - robot.x
+        dy = opponent.y - robot.y
+        distance = math.hypot(dx, dy)
+
+        # Angle difference between robot orientation and opponent direction
+        angle_to_opponent = math.atan2(dy, dx)
+        angle_diff = Sensors._normalize_angle(angle_to_opponent - robot.angle)
+
+        # Distances from arena walls (normalized)
+        dist_left = robot.x
+        dist_right = arena.width - robot.x
+        dist_bottom = robot.y
+        dist_top = arena.height - robot.y
+
+        # Normalize values to reasonable ranges
+        max_dist = math.hypot(arena.width, arena.height)
+
+        sensors = [
+            distance / max_dist,                  # normalized distance to opponent
+            angle_diff / math.pi,                  # normalized angle difference [-1, 1]
+            robot.health / robot.max_health,       # normalized health
+            dist_left / arena.width,
+            dist_right / arena.width,
+            dist_bottom / arena.height,
+            dist_top / arena.height
+        ]
+
+        return sensors
+
+    @staticmethod
+    def _get_opponent(robot, arena):
+        """
+        Return the opponent robot in a 1v1 arena.
+        """
+        for r in arena.robots:
+            if r is not robot:
+                return r
+        raise ValueError("Opponent not found in arena")
+
+    @staticmethod
+    def _normalize_angle(angle):
+        """
+        Normalize angle to the range [-pi, pi].
+        """
+        while angle > math.pi:
+            angle -= 2 * math.pi
+        while angle < -math.pi:
+            angle += 2 * math.pi
+        return angle

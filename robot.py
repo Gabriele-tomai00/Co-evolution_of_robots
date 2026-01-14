@@ -11,30 +11,36 @@ import math
     # Il robot non prende decisioni: esegue soltanto.
     # Questo separa nettamente il modello fisico dalla policy di controllo.
 
-@dataclass
 class Robot:
-    x: float
-    y: float
-    angle: float
-    energy: float = 100.0
-    alive: bool = True
+    def __init__(self, controller, start_pos=(0.0, 0.0)):
+        self.controller = controller
+        self.x, self.y = start_pos
+        self.angle = 0.0           # facing right
+        self.max_health = 100
+        self.health = self.max_health
+        self.damage_inflicted = 0
+        self.last_action = (0.0, 0.0, 0.0)
 
-    radius: float = 0.5
-    max_speed: float = 1.0
-    turn_speed: float = math.pi / 8
+    def apply_action(self, action):
+        # Action[0] = move: -1 backward, 1 forward
+        move = action[0] * 1.0
+        self.x += math.cos(self.angle) * move
+        self.y += math.sin(self.angle) * move
 
-    def move(self, throttle: float, steering: float, arena_size: int):
-        if not self.alive:
-            return
+        # Action[1] = rotate: -1 left, 1 right
+        rotate = action[1] * 0.1
+        self.angle += rotate
 
-        self.angle += steering * self.turn_speed
-        dx = math.cos(self.angle) * throttle * self.max_speed
-        dy = math.sin(self.angle) * throttle * self.max_speed
+        # Action[2] = shoot: 0 = nothing, >0 = shoot
+        if action[2] > 0.5:
+            self.shoot()
 
-        self.x = min(max(self.x + dx, 0), arena_size)
-        self.y = min(max(self.y + dy, 0), arena_size)
+        # Store last action for environment processing (damage, etc.)
+        self.last_action = action
 
-    def take_damage(self, amount: float):
-        self.energy -= amount
-        if self.energy <= 0:
-            self.alive = False
+    def shoot(self):
+        # minimal logic: damage will be applied in Arena
+        pass
+
+    def is_dead(self):
+        return self.health <= 0

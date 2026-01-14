@@ -1,63 +1,79 @@
 import math
-from sensors import compute_sensors
-
-# Responsabilità
-# Simula l’ambiente e le regole dell’interazione tra robot.
-#
-# Compiti principali
-#
-# Gestisce il ciclo temporale della simulazione
-#
-# Applica le azioni dei robot a ogni step
-#
-# Valuta collisioni, limiti dell’arena e combattimento
-#
-# Determina la fine di un match e il vincitore
-#
-# Nota concettuale
-# L’arena è deterministica e neutrale: non favorisce nessuna strategia.
 
 class Arena:
-    def __init__(self, size=20, max_steps=500):
-        self.size = size
+    def __init__(self, width=1.0, height=1.0, robots=None, max_steps=1000):
+        self.width = width
+        self.height = height
+        self.robots = robots or []
         self.max_steps = max_steps
+        self.current_step = 0
+        self.DAMAGE = 10  # health points per hit
+        self.SHOOT_RANGE = 0.2  # max distance for conditional hit
+        self.SHOOT_ANGLE = math.radians(30)  # max angle difference for conditional hit
 
-    def step(self, robot_a, robot_b, ctrl_a, ctrl_b):
-        sensors_a = compute_sensors(robot_a, robot_b, self.size)
-        sensors_b = compute_sensors(robot_b, robot_a, self.size)
+    def step(self):
+        self.current_step += 1
+        for robot in self.robots:
+            sensors = self.get_sensors(robot)
+            action = robot.controller.activate(sensors)
+            robot.apply_action(action)
 
-        steer_a, throttle_a, shoot_a = ctrl_a.act(sensors_a)
-        steer_b, throttle_b, shoot_b = ctrl_b.act(sensors_b)
+        # After all robots moved, apply damage if they shot
+        self.apply_damage()
 
-        robot_a.move(throttle_a, steer_a, self.size)
-        robot_b.move(throttle_b, steer_b, self.size)
+        # Keep robots inside arena
+        for robot in self.robots:
+            self.keep_inside(robot)
 
-        self._handle_shooting(robot_a, robot_b, shoot_a)
-        self._handle_shooting(robot_b, robot_a, shoot_b)
+    def apply_damage(self):
+        """
+        Apply damage when a robot shoots and the target is within range and angle.
+        Uses the robot's last_action to determine if a shot was fired.
+        """
+        for shooter in self.robots:
+            last_action = getattr(shooter, "last_action", None)
+            if last_action is None:
+                continue
+            if last_action[2] > 0.5:
+                for target in self.robots:
+                    if target == shooter:
+                        continue
+                    dx = target.x - shooter.x
+                    dy = target.y - shooter.y
+                    distance = math.hypot(dx, dy)
+                    angle_to_target = math.atan2(dy, dx)
+                    angle_diff = abs(self.normalize_angle(shooter.angle - angle_to_target))
+                    if distance <= self.SHOOT_RANGE and angle_diff <= self.SHOOT_ANGLE:
+                        target.health -= self.DAMAGE
+                        shooter.damage_inflicted += self.DAMAGE
 
-    def _handle_shooting(self, attacker, target, shoot):
-        if not shoot or not attacker.alive or not target.alive:
-            return
+    def normalize_angle(self, angle):
+        # normalize angle to [-pi, pi]
+        while angle > math.pi:
+            angle -= 2*math.pi
+        while angle < -math.pi:
+            angle += 2*math.pi
+        return angle
 
-        dx = target.x - attacker.x
-        dy = target.y - attacker.y
+    def keep_inside(self, robot):
+        robot.x = max(0, min(robot.x, self.width))
+        robot.y = max(0, min(robot.y, self.height))
+
+    def is_done(self):
+        if self.current_step >= self.max_steps:
+            return True
+        for robot in self.robots:
+            if robot.is_dead():
+                return True
+        return False
+
+    # for the NEAT evaluation
+    def get_sensors(self, robot):
+        # minimal example: distance and angle to opponent
+        opponent = next(r for r in self.robots if r != robot)
+        dx = opponent.x - robot.x
+        dy = opponent.y - robot.y
         distance = math.hypot(dx, dy)
-
-        if distance < 5.0:
-            target.take_damage(10.0)
-
-    def run_match(self, robot_a, robot_b, ctrl_a, ctrl_b):
-        for step in range(self.max_steps):
-            if not robot_a.alive or not robot_b.alive:
-                break
-            self.step(robot_a, robot_b, ctrl_a, ctrl_b)
-
-        return self._winner(robot_a, robot_b)
-
-    @staticmethod
-    def _winner(robot_a, robot_b):
-        if robot_a.alive and not robot_b.alive:
-            return 1
-        if robot_b.alive and not robot_a.alive:
-            return -1
-        return 0
+        angle_to_opponent = math.atan2(dy, dx)
+        angle_diff = self.normalize_angle(robot.angle - angle_to_opponent)
+        return [distance, angle_diff, robot.health / 100.0]  # normalized health
