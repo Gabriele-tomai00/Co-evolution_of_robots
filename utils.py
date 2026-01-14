@@ -127,7 +127,7 @@ def eval_genomes(genomes, config):
     
 
 
-def test_best_genome_against_random_opponents(winner_net, population, config, num_tests=5):
+def test_best_genome_against_random_opponents(winner_net, population, config, num_tests=100):
     """
     Test the best genome against random opponents from the current population.
 

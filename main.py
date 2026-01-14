@@ -7,7 +7,7 @@ from tabulate import tabulate
 from utils import *
 
 
-def main(verbose: bool = False):
+def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     print_ascii_logo()
     # Set random seed for reproducibility, used in genome evaluation
     random.seed(0)
@@ -21,11 +21,19 @@ def main(verbose: bool = False):
         "neat_config.txt"
     )
 
+    # Override configuration if arguments are provided
+    if pop_size is not None:
+        config.pop_size = pop_size
+        print(f"Overriding population size to: {pop_size}")
+
     # Initialize population of neural networks
     population = neat.Population(config)
 
+    # Determine number of generations
+    n_generations = generations if generations is not None else GENERATIONS
+
     print("\n=== PHASE 1: Evolving robots with NEAT ===")
-    print(f"Generations: {GENERATIONS}")
+    print(f"Generations: {n_generations}")
 
     # Report evolution progress and statistics
     if verbose:
@@ -37,7 +45,7 @@ def main(verbose: bool = False):
     # Run neuroevolution for a fixed number of generations
     # signature: run(fitness_function, n_generations) -> best_genome
     # NEAT calls eval_genomes for each generation
-    winner = population.run(eval_genomes, GENERATIONS)
+    winner = population.run(eval_genomes, n_generations)
 
     print("\n=== PHASE 2: Best genome found ===")
     num_nodes = len(winner.nodes)
@@ -72,20 +80,79 @@ def main(verbose: bool = False):
 
     results = test_best_genome_against_random_opponents(winner_net, population, config)
 
-    # Print as ASCII table
+    detailed_results = results[:3]
+    print("\nFirst 3 matches:")
     print(
         tabulate(
-            results,
+            detailed_results,
             headers=["Match", "Who Won", "Winner Fitness", "Opponent Fitness"],
             tablefmt="grid",
             floatfmt=".2f",
         )
     )
 
-    num_matches = len(results)
-    num_wins = sum(1 for _, who_won, _, _ in results if who_won == "Winner")
-    num_losses = num_matches - num_wins
-    print(f"\nSummary: {num_wins}/{num_matches} wins, {num_losses} losses.")
+    if len(results) > len(detailed_results):
+        print("...")
+
+    crushing_threshold = 50.0
+
+    total_matches = len(results)
+    wins = 0
+    crushing_wins = 0
+    draws = 0
+    losses = 0
+    crushing_losses = 0
+
+    for _, _, f1, f2 in results:
+        diff = f1 - f2
+        if abs(diff) < 1.0:
+            draws += 1
+        elif diff > 0:
+            if diff >= crushing_threshold:
+                crushing_wins += 1
+            else:
+                wins += 1
+        else:
+            if -diff >= crushing_threshold:
+                crushing_losses += 1
+            else:
+                losses += 1
+
+    effective_wins = wins + crushing_wins
+    win_rate = (effective_wins / total_matches) if total_matches > 0 else 0.0
+
+    summary_table = [[
+        total_matches,
+        wins,
+        crushing_wins,
+        draws,
+        losses,
+        crushing_losses,
+        f"{win_rate * 100:.1f}%",
+    ]]
+    print("Summary of matches:")
+    print(
+        tabulate(
+            summary_table,
+            headers=[
+                "Total",
+                "Wins",
+                "Crushing wins",
+                "Draws",
+                "Losses",
+                "Crushing losses",
+                "Win rate",
+            ],
+            tablefmt="grid",
+        )
+    )
+
+    print(
+        "\nDefinitions:\n"
+        f"- Crushing win: winner's fitness at least {crushing_threshold} points higher than opponent.\n"
+        f"- Crushing loss: winner's fitness at least {crushing_threshold} points lower than opponent.\n"
+        "- Draw: absolute fitness difference less than 1.0."
+    )
 
 
 if __name__ == "__main__":
@@ -97,5 +164,15 @@ if __name__ == "__main__":
         action="store_true",
         help="Print detailed NEAT evolution logs",
     )
+    parser.add_argument(
+        "--generations",
+        type=int,
+        help="Number of generations to run evolution",
+    )
+    parser.add_argument(
+        "--pop-size",
+        type=int,
+        help="Population size (overrides config file)",
+    )
     args = parser.parse_args()
-    main(verbose=args.verbose)
+    main(verbose=args.verbose, generations=args.generations, pop_size=args.pop_size)
