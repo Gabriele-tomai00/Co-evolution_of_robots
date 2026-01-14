@@ -12,7 +12,7 @@ reset_on_extinction   = False
 no_fitness_termination = False
 
 # Stop when best fitness reaches threshold
-fitness_threshold      = 200.0
+fitness_threshold      = 4000.0
 
 
 [DefaultGenome]
