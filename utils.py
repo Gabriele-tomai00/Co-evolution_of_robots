@@ -4,6 +4,8 @@
 
 import random
 import neat
+import datetime
+import time
 
 from arena import Arena
 from robot import Robot
@@ -63,12 +65,6 @@ def simulate_battle(net1, net2):
     return compute_fitness(robot1, robot2, step)
 
     
-
-
-# Number of generations for the evolutionary process
-GENERATIONS = 15
-
-
 def compute_fitness(robot1, robot2, steps):
     """
     Computes fitness values based on battle outcome.
@@ -158,4 +154,30 @@ def test_best_genome_against_random_opponents(winner_net, population, config, nu
         # Add to results list
         results.append([i+1, winner_label, f1, f2])
     return results
+
+
+def print_summary(start_time_str, end_time_str, duration_str, win_rate):
+    """
+    Print a summary of the execution to the console.
+    """
+        
+    print("\n====== Summary =======")
+    print(f"Start time: {start_time_str}")
+    print(f"End time: {end_time_str}")
+    print(f"Duration: {duration_str}")
+    print(f"Win rate: {win_rate * 100:.1f}%")
+    print("====================")
+
+
+def save_execution_log(log_file, n_generations, pop_size, winner_fitness, win_rate, duration_str):
+    """
+    Append the execution details to a log file.
+    """
+    with open(log_file, "a") as f:
+        f.write(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ")
+        f.write(f"Duration: {duration_str} | ")
+        f.write(f"Generations: {n_generations} | ")
+        f.write(f"Pop size: {pop_size} | ")
+        f.write(f"Best fitness: {winner_fitness:.2f} | ")
+        f.write(f"Win rate: {win_rate * 100:.1f}%\n")
 

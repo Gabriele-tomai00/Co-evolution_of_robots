@@ -6,14 +6,22 @@ import argparse
 import neat
 import random
 import pickle
+import time
+import datetime
 from tabulate import tabulate
 
 from utils import *
+# Number of generations for the evolutionary process
+GENERATIONS = 15
+log_file = "execution_log.txt"
 
 
 def main(verbose: bool = False, generations: int = None, pop_size: int = None):
+    start_time = time.time()
+    start_time_str = datetime.datetime.now().strftime("%H:%M:%S")
     print_ascii_logo()
     # Set random seed for reproducibility, used in genome evaluation
+    # when the other istances use the same seed, the genomes will be the same
     random.seed(0)
 
     # Load NEAT configuration (same structure as course notebook)
@@ -157,6 +165,18 @@ def main(verbose: bool = False, generations: int = None, pop_size: int = None):
         f"- Crushing loss: winner's fitness at least {crushing_threshold} points lower than opponent.\n"
         "- Draw: absolute fitness difference less than 1.0."
     )
+
+    # SUMMARIZE EXECUTION
+    end_time = time.time()
+    duration_seconds = int(end_time - start_time)
+    minutes, seconds = divmod(duration_seconds, 60)
+    start_time_str = datetime.datetime.fromtimestamp(start_time).strftime("%H:%M:%S")
+    end_time_str = datetime.datetime.now().strftime("%H:%M:%S")
+    duration_str = f"{minutes}m {seconds}s"
+
+    print_summary(start_time_str, end_time_str, duration_str, win_rate)
+    # Save summary to log file
+    save_execution_log(log_file, n_generations, config.pop_size, winner.fitness, win_rate, duration_str)
 
 
 if __name__ == "__main__":
