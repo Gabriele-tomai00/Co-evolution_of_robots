@@ -9,7 +9,7 @@ pop_size              = 50
 reset_on_extinction   = False
 
 # Stop evolution only if fitness_threshold is reached
-no_fitness_termination = False
+no_fitness_termination = True
 
 # Stop when best fitness reaches threshold
 fitness_threshold      = 4000.0
