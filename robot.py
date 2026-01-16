@@ -1,3 +1,7 @@
+#    Gabriele Tomai
+#    Student ID: IN2300006
+#    Degree Program: Computer Engineering
+
 from dataclasses import dataclass
 import math
 

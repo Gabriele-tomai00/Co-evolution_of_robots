@@ -1,6 +1,9 @@
+#    Gabriele Tomai
+#    Student ID: IN2300006
+#    Degree Program: Computer Engineering
+
 import neat
 from sensors import Sensors
-
 
 class NEATController:
     """
