@@ -38,6 +38,7 @@ class Arena:
             last_action = getattr(shooter, "last_action", None)
             if last_action is None:
                 continue
+            # last_action: [steering, throttle, shoot]
             if last_action[2] > 0.5:
                 for target in self.robots:
                     if target == shooter:
@@ -70,14 +71,3 @@ class Arena:
             if robot.is_dead():
                 return True
         return False
-
-    # for the NEAT evaluation
-    def get_sensors(self, robot):
-        # minimal example: distance and angle to opponent
-        opponent = next(r for r in self.robots if r != robot)
-        dx = opponent.x - robot.x
-        dy = opponent.y - robot.y
-        distance = math.hypot(dx, dy)
-        angle_to_opponent = math.atan2(dy, dx)
-        angle_diff = self.normalize_angle(robot.angle - angle_to_opponent)
-        return [distance, angle_diff, robot.health / 100.0]  # normalized health

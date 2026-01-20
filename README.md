@@ -52,7 +52,7 @@ Short file summary:
     6. Normalized distance to the BOTTOM wall (divided by arena height).
     7. Normalized distance to the TOP wall (divided by arena height).
 
-- **Action decoding (`NEATController.decide`)**
+- **Action decoding**
   - Reads the current sensor vector.
   - Feeds it to the NEAT-generated feed-forward network.
   - Interprets the three outputs as:
@@ -152,6 +152,11 @@ Run with detailed NEAT logs:
 ```bash
 python main.py --verbose
 ```
+You can add the following parameter:
+- `--generations N`: number of generations to run the experiment (default: 200).
+- `--pop-size N`: maximum number of genomes in the population (default: 50).
+- 
+
 
 ### Expected outputs
 

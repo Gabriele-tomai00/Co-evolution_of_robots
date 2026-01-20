@@ -4,15 +4,15 @@
 
 import random
 import neat
-import datetime
-import time
-
+import os
+from controllers import RandomController, StaticShooter, AggressiveChaser
 from arena import Arena
 from robot import Robot
 from sensors import Sensors
 
 # Maximum number of simulation steps for a single battle
 MAX_STEPS = 300
+filename_for_fitness_history = "fitness_history.csv"
 
 def print_ascii_logo():
     ascii_art = r"""
@@ -91,15 +91,56 @@ def compute_fitness(robot1, robot2, steps):
     return fitness1, fitness2
 
 
+# Wrappers for new controllers to match .activate() interface
+class RandomWrapper:
+    def __init__(self):
+        self.controller = RandomController()
+    def activate(self, sensors):
+        return self.controller.act(sensors)
+
+class StaticWrapper:
+    def __init__(self):
+        self.controller = StaticShooter()
+    def activate(self, sensors):
+        return self.controller.act(sensors)
+
+class ChaserWrapper:
+    def __init__(self):
+        self.controller = AggressiveChaser()
+    def activate(self, sensors):
+        return self.controller.act(sensors)
+
+# Worker function for round-robin battles
+def worker_battle(args):
+    id1, net1, id2, net2 = args
+    f1, f2 = simulate_battle(net1, net2)
+    return id1, f1, id2, f2
+
+# Worker function for random battles
+def worker_random_battle(args):
+    genome_id, net = args
+    # We need to recreate RandomWrapper here to ensure new random state/opponent
+    opponent = RandomWrapper()
+    f_genome, f_random = simulate_battle(net, opponent)
+    return genome_id, f_genome
+
+
+# Global generation counter for logging
+generation_count = 0
+
 def eval_genomes(genomes, config):
     """
     Evaluation function required by neat-python.
     Each genome is evaluated by fighting against other genomes.
     """
+    global generation_count
 
     # Initialize fitness for all genomes
     for _, genome in genomes:
         genome.fitness = 0.0
+        # Custom attributes for tracking internal vs external performance
+        genome.fitness_internal = 0.0
+        genome.fitness_external = 0.0
 
     # Create neural networks from genomes
     networks = {}
@@ -122,37 +163,107 @@ def eval_genomes(genomes, config):
             f1, f2 = simulate_battle(net1, net2)
 
             # Fitness accumulation reflects relative performance
-            genomes[i][1].fitness += f1
-            genomes[j][1].fitness += f2
+            genomes[i][1].fitness_internal += f1
+            genomes[j][1].fitness_internal += f2
     
+    # Validation against multiple opponents to prevent overfitting
+    # Each genome plays against Random, Static, and Chaser bots
+    for genome_id, genome in genomes:
+        net = networks[genome_id]
+        
+        # 1. Fight against Random (unpredictable) - 2 matches
+        for _ in range(2):
+            opponent = RandomWrapper()
+            f_genome, _ = simulate_battle(net, opponent)
+            genome.fitness_external += f_genome
+            
+        # 2. Fight against Static (aim test) - 2 matches
+        for _ in range(4):
+            opponent = StaticWrapper()
+            f_genome, _ = simulate_battle(net, opponent)
+            genome.fitness_external += f_genome
+        
+        # 3. Fight against Chaser (pressure test) - 2 matches
+        for _ in range(4):
+            opponent = ChaserWrapper()
+            f_genome, _ = simulate_battle(net, opponent)
+            genome.fitness_external += f_genome
+            
+    # Combine fitness and calculate stats
+    total_internal = 0.0
+    total_external = 0.0
+    
+    # Calculate number of matches
+    num_opponents = len(genome_ids) - 1
+    num_external_matches = 6 # 2 Random + 2 Static + 2 Chaser
+    
+    for _, genome in genomes:
+        # Normalize fitness by number of matches to balance incentives
+        avg_internal_score = genome.fitness_internal / num_opponents if num_opponents > 0 else 0.0
+        avg_external_score = genome.fitness_external / num_external_matches
+        
+        # Total fitness determines selection
+        # We give equal weight to internal (co-evolution) and external (robustness) performance
+        genome.fitness = avg_internal_score + avg_external_score
+        
+        # For stats, we keep tracking the raw totals or averages? 
+        # Let's track averages to make them comparable in the CSV
+        total_internal += avg_internal_score
+        total_external += avg_external_score
 
+    # Calculate population averages of the per-match scores
+    avg_internal_pop = total_internal / len(genomes)
+    avg_external_pop = total_external / len(genomes)
+    
+    print(f" > [Gen {generation_count}] Avg Score/Match - Internal: {avg_internal_pop:.2f} | External: {avg_external_pop:.2f}")
+    log_fitness_history(generation_count, avg_internal_pop, avg_external_pop)
+    
+    generation_count += 1
 
-def test_best_genome_against_random_opponents(winner_net, population, config, num_tests=100):
+def log_fitness_history(gen, avg_int, avg_ext):
     """
-    Test the best genome against random opponents from the current population.
-
-    Args:
-        winner_net: the neural network of the best genome
-        population: a dict of all genomes in the population
-        config: NEAT config
-        num_tests: number of random opponents to test against
-
+    Appends fitness statistics to a CSV file.
+    """
+    if not os.path.exists(filename_for_fitness_history) or gen == 0:
+        with open(filename_for_fitness_history, "w") as f:
+            f.write("Generation,Avg_Internal_Score_Per_Match,Avg_External_Score_Per_Match\n")
+            
+    with open(filename_for_fitness_history, "a") as f:
+        f.write(f"{gen},{avg_int:.2f},{avg_ext:.2f}\n")
+    
+def test_best_genome_against_random_opponents(winner_net, num_tests=100):
+    """
+    Test the best genome against a mix of opponents:
+    1. RandomController (unpredictable)
+    2. StaticShooter (perfect aim, stationary)
+    3. AggressiveChaser (perfect aim, chases)
+    
     Returns:
-        results: list of [match_number, who_won, winner_fitness, opponent_fitness]
+        results: list of [match_number, who_won, winner_fitness, opponent_fitness, opponent_type]
     """
 
     results = []
-    for i in range(num_tests):
-        opponent_genome = random.choice(list(population.population.values()))
-        opponent_net = neat.nn.FeedForwardNetwork.create(opponent_genome, config)
+    
+    # Split tests to match training distribution (approx 20% Random, 40% Static, 40% Chaser)
+    num_random = int(num_tests * 0.2)
+    num_static = int(num_tests * 0.4)
+    num_chaser = num_tests - num_random - num_static
+    
+    opponents = []
+    for _ in range(num_random): opponents.append(("Random", RandomWrapper()))
+    for _ in range(num_static): opponents.append(("Static", StaticWrapper()))
+    for _ in range(num_chaser): opponents.append(("Chaser", ChaserWrapper()))
+    
+    random.shuffle(opponents)
 
+    for i, (opp_type, opponent_net) in enumerate(opponents):
         f1, f2 = simulate_battle(winner_net, opponent_net)
 
         # Decide who "won" the match for display
-        winner_label = "Winner" if f1 >= f2 else "Opponent"
+        winner_label = "Winner" if f1 >= f2 else opp_type
 
         # Add to results list
-        results.append([i+1, winner_label, f1, f2])
+        results.append([i+1, winner_label, f1, f2, opp_type])
     return results
 
 
@@ -166,18 +277,4 @@ def print_summary(start_time_str, end_time_str, duration_str, win_rate):
     print(f"End time: {end_time_str}")
     print(f"Duration: {duration_str}")
     print(f"Win rate: {win_rate * 100:.1f}%")
-    print("====================")
-
-
-def save_execution_log(log_file, n_generations, pop_size, winner_fitness, win_rate, duration_str):
-    """
-    Append the execution details to a log file.
-    """
-    with open(log_file, "a") as f:
-        f.write(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ")
-        f.write(f"Duration: {duration_str} | ")
-        f.write(f"Generations: {n_generations} | ")
-        f.write(f"Pop size: {pop_size} | ")
-        f.write(f"Best fitness: {winner_fitness:.2f} | ")
-        f.write(f"Win rate: {win_rate * 100:.1f}%\n")
-
+    print("=====================")

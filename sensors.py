@@ -16,12 +16,10 @@ class Sensors:
     def get(robot, arena):
         """
         Compute the sensor vector for a robot inside the arena.
-
         Returns a list of floats with fixed size and ordering.
         """
 
         opponent = Sensors._get_opponent(robot, arena)
-
         # Relative position to opponent
         dx = opponent.x - robot.x
         dy = opponent.y - robot.y
@@ -39,11 +37,11 @@ class Sensors:
 
         # Normalize values to reasonable ranges
         max_dist = math.hypot(arena.width, arena.height)
-
+        # normalized
         sensors = [
-            distance / max_dist,                  # normalized distance to opponent
-            angle_diff / math.pi,                  # normalized angle difference [-1, 1]
-            robot.health / robot.max_health,       # normalized health
+            distance / max_dist,
+            angle_diff / math.pi,
+            robot.health / robot.max_health,
             dist_left / arena.width,
             dist_right / arena.width,
             dist_bottom / arena.height,

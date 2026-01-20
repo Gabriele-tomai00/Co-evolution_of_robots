@@ -8,13 +8,9 @@ import random
 import pickle
 import time
 import datetime
-from tabulate import tabulate
 import sys
-from utils import *
-# Number of generations for the evolutionary process
+from utils import print_ascii_logo, eval_genomes, test_best_genome_against_random_opponents, print_summary
 GENERATIONS = 15
-log_file = "execution_log.txt"
-
 
 def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     start_time = time.time()
@@ -60,23 +56,27 @@ def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     winner = population.run(eval_genomes, n_generations)
 
     print("\n=== PHASE 2: Best genome found ===")
+    
+    # Retrieve custom fitness components if available
+    fit_int = getattr(winner, "fitness_internal", 0.0)
+    fit_ext = getattr(winner, "fitness_external", 0.0)
+    
+    # Approximate averages based on config (assuming standard run)
+    # pop_size is in config.pop_size
+    # External matches is 6 (fixed in utils.py)
+    # Internal matches is pop_size - 1
+    pop_size = config.pop_size
+    avg_int = fit_int / (pop_size - 1) if pop_size > 1 else 0.0
+    avg_ext = fit_ext / 6.0
+    
+    print(f"Best Genome ID: {winner.key}")
+    print(f"Total Fitness: {winner.fitness:.2f}")
+    print(f" - Internal Fitness (vs population): {avg_int:.2f} (raw: {fit_int:.1f})")
+    print(f" - External Fitness (vs opponents):  {avg_ext:.2f} (raw: {fit_ext:.1f})")
+    
     num_nodes = len(winner.nodes)
     num_connections = sum(1 for c in winner.connections.values() if c.enabled)
-
-    best_summary = [[
-        getattr(winner, "key", "N/A"),
-        f"{getattr(winner, 'fitness', 0.0):.2f}",
-        num_nodes,
-        num_connections,
-    ]]
-
-    print(
-        tabulate(
-            best_summary,
-            headers=["Genome ID", "Fitness", "Nodes", "Enabled connections"],
-            tablefmt="grid",
-        )
-    )
+    print(f"Network Complexity: {num_nodes} nodes, {num_connections} connections")
 
     if verbose:
         print("\nRaw NEAT genome (including nodes and connections):\n")
@@ -85,26 +85,11 @@ def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     with open("best_robot.pkl", "wb") as f:
         pickle.dump(winner, f)
 
-
     # Test best controller against random opponents
     winner_net = neat.nn.FeedForwardNetwork.create(winner, config)
     print("\n=== PHASE 3: Testing best genome against random opponents ===")
 
-    results = test_best_genome_against_random_opponents(winner_net, population, config)
-
-    detailed_results = results[:3]
-    print("\nFirst 3 matches:")
-    print(
-        tabulate(
-            detailed_results,
-            headers=["Match", "Who Won", "Winner Fitness", "Opponent Fitness"],
-            tablefmt="grid",
-            floatfmt=".2f",
-        )
-    )
-
-    if len(results) > len(detailed_results):
-        print("...")
+    results = test_best_genome_against_random_opponents(winner_net)
 
     crushing_threshold = 50.0
 
@@ -115,7 +100,7 @@ def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     losses = 0
     crushing_losses = 0
 
-    for _, _, f1, f2 in results:
+    for _, _, f1, f2, _ in results:
         diff = f1 - f2
         if abs(diff) < 1.0:
             draws += 1
@@ -133,38 +118,11 @@ def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     effective_wins = wins + crushing_wins
     win_rate = (effective_wins / total_matches) if total_matches > 0 else 0.0
 
-    summary_table = [[
-        total_matches,
-        wins,
-        crushing_wins,
-        draws,
-        losses,
-        crushing_losses,
-        f"{win_rate * 100:.1f}%",
-    ]]
-    print("Summary of matches:")
-    print(
-        tabulate(
-            summary_table,
-            headers=[
-                "Total",
-                "Wins",
-                "Crushing wins",
-                "Draws",
-                "Losses",
-                "Crushing losses",
-                "Win rate",
-            ],
-            tablefmt="grid",
-        )
-    )
-
-    print(
-        "\nDefinitions:\n"
-        f"- Crushing win: winner's fitness at least {crushing_threshold} points higher than opponent.\n"
-        f"- Crushing loss: winner's fitness at least {crushing_threshold} points lower than opponent.\n"
-        "- Draw: absolute fitness difference less than 1.0."
-    )
+    print(f"Matches: {total_matches}")
+    print(f"Wins: {wins + crushing_wins} ({wins} normal, {crushing_wins} crushing)")
+    print(f"Draws: {draws}")
+    print(f"Losses: {losses + crushing_losses}")
+    print(f"Win Rate: {win_rate * 100:.1f}%")
 
     # SUMMARIZE EXECUTION
     end_time = time.time()
@@ -175,9 +133,6 @@ def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     duration_str = f"{minutes}m {seconds}s"
 
     print_summary(start_time_str, end_time_str, duration_str, win_rate)
-    # Save summary to log file
-    save_execution_log(log_file, n_generations, config.pop_size, winner.fitness, win_rate, duration_str)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

@@ -5,16 +5,6 @@
 from dataclasses import dataclass
 import math
 
-# Responsabilità
-    # Rappresenta l’agente fisico all’interno dell’arena.
-# Compiti principali
-    # Mantiene lo stato del robot (posizione, orientamento, energia, vita)
-    # Applica le azioni ricevute dal controller (movimento, rotazione)
-    # Gestisce i danni e la condizione di morte
-# Nota concettuale
-    # Il robot non prende decisioni: esegue soltanto.
-    # Questo separa nettamente il modello fisico dalla policy di controllo.
-
 class Robot:
     def __init__(self, controller, start_pos=(0.0, 0.0)):
         self.controller = controller
@@ -36,7 +26,7 @@ class Robot:
         rotate = action[1] * 0.1
         self.angle += rotate
 
-        # Action[2] = shoot: 0 = nothing, >0 = shoot
+        # Action[2] = shoot: 0 = nothing, >0.5 = shoot
         if action[2] > 0.5:
             self.shoot()
 
