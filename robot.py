@@ -27,7 +27,8 @@ class Robot:
 
     def apply_action(self, action):
         # Action[0] = move: -1 backward, 1 forward
-        move = action[0] * 1.0
+        # Reduced speed factor from 1.0 to 0.05 to prevent teleportation
+        move = action[0] * 0.05
         self.x += math.cos(self.angle) * move
         self.y += math.sin(self.angle) * move
 
