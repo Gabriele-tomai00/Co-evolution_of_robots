@@ -9,7 +9,7 @@ import pickle
 import time
 import datetime
 from tabulate import tabulate
-
+import sys
 from utils import *
 # Number of generations for the evolutionary process
 GENERATIONS = 15
@@ -199,4 +199,12 @@ if __name__ == "__main__":
         help="Population size (overrides config file)",
     )
     args = parser.parse_args()
-    main(verbose=args.verbose, generations=args.generations, pop_size=args.pop_size)
+
+    try:
+        main(verbose=args.verbose, generations=args.generations, pop_size=args.pop_size)
+        
+    except (KeyboardInterrupt, EOFError):
+        print("\nExecution interrupted by user.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"An error occurred: {e}")
