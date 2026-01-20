@@ -16,15 +16,15 @@ Repository root:
 
 ```text
 project/
-├── main.py              # Entry point, NEAT setup, evolution and final testing
-├── utils.py             # Fitness evaluation, battle simulation, helper utilities
-├── arena.py             # Arena geometry, rules, damage, termination conditions
-├── robot.py             # Robot state (pose, health) and action execution
-├── sensors.py           # Sensor model: builds the input vector for the network
-├── neat_controller.py   # NEATController (genome → neural net → high-level action)
-├── controllers.py       # Example handcrafted controller (RandomController)
-├── neat_config.txt      # NEAT configuration (population, mutation, topology, etc.)
-├── requirements.txt     # Python dependencies (neat-python, tabulate)
+├── main.py
+├── utils.py
+├── arena.py
+├── robot.py
+├── sensors.py
+├── neat_controller.py
+├── controllers.py
+├── neat_config.txt
+├── requirements.txt
 └── README.md
 ```
 
@@ -43,12 +43,14 @@ Short file summary:
 ## Main Operations
 
 - **Sensor computation (`Sensors.get`)**
-  - Given a robot and the arena, computes:
-    - Normalized distance to the opponent.
-    - Normalized angle difference to the opponent.
-    - Normalized health.
-    - Normalized distances to the four arena walls.
-  - Produces a fixed-size vector of 7 floats, which matches `num_inputs = 7` in `neat_config.txt`.
+  - Given a robot and the arena, computes a fixed-size vector of 7 floats (`num_inputs = 7` in `neat_config.txt`):
+    1. Normalized distance to the opponent (divided by arena diagonal).
+    2. Normalized angle difference to the opponent (divided by PI to be in [-1, 1]).
+    3. Normalized health (divided by max health).
+    4. Normalized distance to the LEFT wall (divided by arena width).
+    5. Normalized distance to the RIGHT wall (divided by arena width).
+    6. Normalized distance to the BOTTOM wall (divided by arena height).
+    7. Normalized distance to the TOP wall (divided by arena height).
 
 - **Action decoding (`NEATController.decide`)**
   - Reads the current sensor vector.
@@ -95,21 +97,14 @@ High-level execution when running `python main.py`:
 1. **Initialization (in `main.py`)**
    - Sets a fixed random seed (`random.seed(0)`).
    - Loads NEAT configuration from `neat_config.txt`.
-   - Creates a `neat.Population` using:
-     - `DefaultGenome`
-     - `DefaultReproduction`
-     - `DefaultSpeciesSet`
-     - `DefaultStagnation`
+   - Creates a `neat.Population`
 
 2. **Evolution loop**
-   - Adds NEAT reporters:
-     - `StdOutReporter`: controls how much is printed (detailed if `--verbose`).
-     - `StatisticsReporter`: collects statistics across generations.
+   - Adds NEAT reporters
    - Runs evolution by calling:
      ```python
      winner = population.run(eval_genomes, GENERATIONS)
      ```
-   - Here `GENERATIONS = 15` (defined in `utils.py`).
    - For each generation:
      - `population.run` calls `eval_genomes`.
      - `eval_genomes` performs competitive co-evolution:
@@ -118,7 +113,7 @@ High-level execution when running `python main.py`:
        - Updates fitness values based on the battle outcomes.
 
 3. **Selecting the best genome**
-   - After 15 generations, NEAT returns the best genome (`winner`).
+   - After all the generations, NEAT returns the best genome (`winner`).
    - Prints a summary table with:
      - `Genome ID`
      - `Fitness`
@@ -135,75 +130,6 @@ High-level execution when running `python main.py`:
      - Prints an ASCII table with match index, winner label and fitness scores.
    - Prints a final summary: total wins and losses of the best genome.
 
-Conceptually:
-
-```text
-main.py
- └─ NEAT Population
-     ├─ eval_genomes (per generation)
-     │   └─ simulate_battle (pairwise fights)
-     └─ winner genome
-         ├─ serialization to best_robot.pkl
-         └─ test_best_genome_against_random_opponents
-             └─ simulate_battle vs random opponents
-```
-
----
-
-## Important NEAT Parameters
-
-All NEAT hyperparameters are defined in [`neat_config.txt`](./neat_config.txt).  
-Below are the most relevant ones for understanding the behavior of the system.
-
-### Global NEAT settings (`[NEAT]`)
-
-| Parameter                | Value   | Meaning                                                                 |
-|--------------------------|---------|-------------------------------------------------------------------------|
-| `fitness_criterion`      | `max`   | NEAT optimizes for the maximum fitness in the population.              |
-| `pop_size`               | `50`    | Number of genomes (robots) per generation.                             |
-| `reset_on_extinction`    | `False` | Do not reset the population if all species go extinct.                 |
-| `no_fitness_termination` | `False` | Evolution can stop early if threshold is reached.                      |
-| `fitness_threshold`      | `200.0` | Stop if the best fitness reaches or exceeds this value.                |
-| `GENERATIONS` (code)     | `15`    | Number of generations to run (defined in `utils.py`).                  |
-
-### Genome / Network topology (`[DefaultGenome]`)
-
-| Parameter           | Value | Meaning                                                     |
-|---------------------|-------|-------------------------------------------------------------|
-| `num_inputs`        | `7`   | Must match the length of the sensor vector.                |
-| `num_outputs`       | `3`   | Move, turn, shoot.                                         |
-| `num_hidden`        | `0`   | Start with a pure input–output architecture.               |
-| `feed_forward`      | `True`| No recurrent connections; strictly feed-forward networks.   |
-| `initial_connection`| `full`| Initially connect all inputs to all outputs.               |
-
-### Mutation of weights and structure
-
-| Parameter             | Value | Meaning                                            |
-|-----------------------|-------|----------------------------------------------------|
-| `weight_mutate_rate`  | `0.8` | Probability to mutate a connection weight.        |
-| `weight_mutate_power` | `0.5` | Standard deviation of weight perturbation.        |
-| `weight_replace_rate` | `0.1` | Probability to replace weight instead of perturb. |
-| `bias_mutate_rate`    | `0.7` | Probability to mutate node biases.                |
-| `bias_mutate_power`   | `0.5` | Magnitude of bias mutation.                       |
-| `conn_add_prob`       | `0.5` | Probability to add a new connection.              |
-| `conn_delete_prob`    | `0.5` | Probability to delete an existing connection.     |
-| `node_add_prob`       | `0.2` | Probability to add a new hidden node.             |
-| `node_delete_prob`    | `0.2` | Probability to delete a node.                     |
-
-### Speciation, stagnation and reproduction
-
-| Section               | Parameter             | Value | Meaning                                              |
-|-----------------------|-----------------------|-------|------------------------------------------------------|
-| `[DefaultSpeciesSet]` | `compatibility_threshold` | `3.0` | Distance above which genomes belong to different species. |
-| `[DefaultStagnation]` | `max_stagnation`      | `20`  | Species removed if they do not improve for 20 generations. |
-| `[DefaultStagnation]` | `species_elitism`     | `2`   | Number of top genomes per species that always survive. |
-| `[DefaultReproduction]` | `elitism`          | `2`   | Number of top genomes in the whole population copied unchanged. |
-| `[DefaultReproduction]` | `survival_threshold` | `0.2` | Fraction of genomes per species allowed to reproduce. |
-
-These parameters jointly control exploration (mutation, structural changes) and exploitation (elitism, species preservation) of the search space of robot controllers.
-
----
-
 ## Setup and Execution
 
 ### Requirements
@@ -211,9 +137,7 @@ These parameters jointly control exploration (mutation, structural changes) and 
 - Python `>= 3.9`
 - Recommended: virtual environment (venv, conda, etc.)
 
-Python dependencies are listed in `requirements.txt`:
-- `neat-python>=0.92`
-- `tabulate`
+Python dependencies are listed in `requirements.txt`
 
 ### Running the evolutionary experiment
 
