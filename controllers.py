@@ -5,6 +5,10 @@
 import random
 
 class RandomController:
+    """
+    Basic controller generating random actions for movement and shooting.
+    Useful as a baseline for performance evaluation.
+    """
     def act(self, sensors):
         steering = random.uniform(-1, 1)
         throttle = random.uniform(0, 1)
@@ -18,11 +22,11 @@ class StaticShooter:
     Tests the opponent's ability to dodge or attack quickly.
     """
     def act(self, sensors):
-        # sensors[1] is angle_diff (normalized [-1, 1])
-        # If angle_diff > 0, enemy is to the left/right? 
-        # Actually sensors[1] is (angle_to_opponent - my_angle)
-        # We want to minimize this difference.
-        
+        """
+        Calculates action based on angular difference to constantly aim
+        at the opponent and shoot.
+        """
+
         angle_diff = sensors[1]
         
         # Simple P-controller for steering
@@ -41,6 +45,10 @@ class AggressiveChaser:
     Tests the opponent's ability to kite or overpower in close combat.
     """
     def act(self, sensors):
+        """
+        Implements an aggressive strategy: moves towards the opponent
+        and shoots when aligned.
+        """
         angle_diff = sensors[1]
         distance = sensors[0]
         

@@ -5,6 +5,10 @@
 import math
 
 class Arena:
+    """
+    Manages the battle simulation, including robots, basic physics,
+    and engagement rules.
+    """
     def __init__(self, width=1.0, height=1.0, robots=None, max_steps=1000):
         self.width = width
         self.height = height
@@ -16,6 +20,10 @@ class Arena:
         self.SHOOT_ANGLE = math.radians(30)  # max angle difference for conditional hit
 
     def step(self):
+        """
+        Executes a single simulation step: updates sensors,
+        applies robot actions, and calculates damage.
+        """
         self.current_step += 1
         for robot in self.robots:
             sensors = self.get_sensors(robot)
@@ -65,6 +73,10 @@ class Arena:
         robot.y = max(0, min(robot.y, self.height))
 
     def is_done(self):
+        """
+        Checks if the battle is over due to maximum steps reached
+        or if one robot is dead.
+        """
         if self.current_step >= self.max_steps:
             return True
         for robot in self.robots:

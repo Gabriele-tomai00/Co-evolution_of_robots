@@ -34,10 +34,8 @@ Short file summary:
 - `arena.py` – defines the 2D arena, step logic, boundary conditions and hit/damage computation.
 - `robot.py` – represents a single robot (position, orientation, health, last action).
 - `sensors.py` – computes a 7-dimensional sensor vector for each robot (opponent distance/angle, distance from walls, health).
-- `neat_controller.py` – wraps a NEAT-evolved neural network and decodes its outputs into a structured action.
 - `controllers.py` – contains a simple `RandomController` used as a conceptual baseline.
 - `neat_config.txt` – contains all NEAT hyperparameters (population size, topology, mutation rates, species, etc.).
-
 ---
 
 ## Main Operations

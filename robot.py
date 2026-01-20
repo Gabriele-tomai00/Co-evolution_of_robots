@@ -6,6 +6,10 @@ from dataclasses import dataclass
 import math
 
 class Robot:
+    """
+    Represents a robotic entity with position, orientation, and health.
+    Handles the application of actions received from the controller.
+    """
     def __init__(self, controller, start_pos=(0.0, 0.0)):
         self.controller = controller
         self.x, self.y = start_pos
@@ -16,6 +20,10 @@ class Robot:
         self.last_action = (0.0, 0.0, 0.0)
 
     def apply_action(self, action):
+        """
+        Updates robot state (position, angle) based on the received action
+        and handles shooting logic.
+        """
         # Action[0] = move: -1 backward, 1 forward
         # Reduced speed factor from 1.0 to 0.05 to prevent teleportation
         move = action[0] * 0.05
