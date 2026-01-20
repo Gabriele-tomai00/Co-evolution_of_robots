@@ -30,6 +30,9 @@ class Sensors:
         angle_diff = Sensors._normalize_angle(angle_to_opponent - robot.angle)
 
         # Distances from arena walls (normalized)
+        # We provide 4 separate distances (left, right, bottom, top) instead of just (x, y) coordinates.
+        # This explicit representation makes it easier for the neural network to detect proximity to boundaries
+        # and learn to avoid collisions without performing complex internal calculations.
         dist_left = robot.x
         dist_right = arena.width - robot.x
         dist_bottom = robot.y

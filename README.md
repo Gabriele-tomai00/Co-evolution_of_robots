@@ -21,7 +21,6 @@ project/
 ├── arena.py
 ├── robot.py
 ├── sensors.py
-├── neat_controller.py
 ├── controllers.py
 ├── neat_config.txt
 ├── requirements.txt
@@ -34,8 +33,7 @@ Short file summary:
 - `arena.py` – defines the 2D arena, step logic, boundary conditions and hit/damage computation.
 - `robot.py` – represents a single robot (position, orientation, health, last action).
 - `sensors.py` – computes a 7-dimensional sensor vector for each robot (opponent distance/angle, distance from walls, health).
-- `controllers.py` – contains a simple `RandomController` used as a conceptual baseline.
-- `neat_config.txt` – contains all NEAT hyperparameters (population size, topology, mutation rates, species, etc.).
+- `controllers.py` – contains `RandomController`, `StaticShooter`, and `AggressiveChaser`.
 ---
 
 ## Main Operations
@@ -67,24 +65,28 @@ Short file summary:
     - Updates the arena (damage, boundaries, death checks).
   - Stops when at least one robot dies or the step limit is reached.
   - Returns two fitness contributions, one for each controller.
+  - The simulation is simultaneous (real-time): both robots perceive and act in the same time step, not turn-based.
 
 - **Fitness computation (`compute_fitness`)**
-  - Strong reward (+100) for winning the fight.
-  - Adds damage inflicted by each robot to its fitness.
-  - Adds a small bonus proportional to the number of steps survived (encourages longer survival).
+  - **Non-zero-sum game**: A robot's gain is not necessarily the opponent's loss (e.g., survival bonus).
+  - **Damage**: 
+    - Inflicted: `+10` fitness per hit (added to shooter).
+    - Received: `-10` health per hit (subtracted from victim's health, doesn't directly reduce fitness but leads to death).
+  - **Survival**: `+0.1` fitness per step survived (up to `+30` total).
+  - **Victory**: `+100` bonus for killing the opponent.
+  - **Theoretical Max Fitness**: ~`230` 
+    - `100` (Win) + `100` (Inflicting 100 damage to kill) + `30` (Surviving 300 steps).
+    - Note: Actually slightly less than 230 because killing early reduces the survival bonus.
 
 - **Genome evaluation (`eval_genomes`)**
   - Required by `neat-python`. For each generation:
-    - Initializes all genomes with fitness 0.
+    - Initializes all genomes with fitness 0 (resetting the score for the current tournament, though the learned network structure is preserved).
     - Builds a neural network for every genome.
     - Plays *round-robin* battles: every pair of genomes fights once.
     - Accumulates fitness from the battles into each genome.
 
 - **Testing the best genome (`test_best_genome_against_random_opponents`)**
-  - After evolution, converts the best genome into a network.
-  - Samples random opponent genomes from the final population.
-  - Simulates several battles and records who wins and the fitness scores.
-  - Prints an ASCII table with the summary of test matches.
+  - Validates the champion's robustness by fighting 100 matches against a mix of opponents: random (20%), static (40%), and aggressive chasers (40%).
 
 ---
 
@@ -151,7 +153,7 @@ Run with detailed NEAT logs:
 python main.py --verbose
 ```
 You can add the following parameter:
-- `--generations N`: number of generations to run the experiment (default: 200).
+- `--generations N`: number of generations to run the experiment (default: 15).
 - `--pop-size N`: maximum number of genomes in the population (default: 50).
 - 
 
@@ -166,4 +168,11 @@ You can add the following parameter:
   - ASCII table of battles between the best genome and random opponents.
   - Final line summarizing wins and losses of the best controller.
 
-You can later reload `best_robot.pkl` to visualize or reuse the evolved controller in different arenas or experimental setups.
+### Result
+The following plot shows the fitness evolution of the best genome over 300 generations (Population: 50, Elitism: 2).
+
+<img src="results/pop_50_gen_300_elit_2.png" alt="Fitness plot" width="600"/>
+
+**Interpretation**:
+- **Internal Fitness (Blue)**: Stabilizes between 75-100. This indicates a balanced "Red Queen" dynamic where the population evolves together, maintaining a competitive equilibrium (winning ~50% of the time against equally evolved peers).
+- **External Fitness (Orange)**: Grows steadily from ~80 to >200. This confirms objective progress: the robots are becoming increasingly effective at defeating fixed opponents (Random, Static, Chaser), exploiting their weaknesses to maximize score and survival.
