@@ -108,11 +108,8 @@ High-level execution when running `python main.py`:
      winner = population.run(eval_genomes, GENERATIONS)
      ```
    - For each generation:
-     - `population.run` calls `eval_genomes`.
-     - `eval_genomes` performs competitive co-evolution:
-       - Builds networks for each genome.
-       - Runs `simulate_battle` for all genome pairs.
-       - Updates fitness values based on the battle outcomes.
+    - `population.run` invokes the user-defined `eval_genomes` function.
+    - `eval_genomes` executes the competitive co-evolution logic (internal round-robin + external validation) as described in the **Main Operations** section.
 
 3. **Selecting the best genome**
    - After all the generations, NEAT returns the best genome (`winner`).
