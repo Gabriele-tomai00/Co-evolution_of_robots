@@ -43,22 +43,27 @@ class Arena:
         Uses the robot's last_action to determine if a shot was fired.
         """
         for shooter in self.robots:
-            last_action = getattr(shooter, "last_action", None)
-            if last_action is None:
-                continue
-            # last_action: [steering, throttle, shoot]
-            if last_action[2] > 0.5:
-                for target in self.robots:
-                    if target == shooter:
-                        continue
-                    dx = target.x - shooter.x
-                    dy = target.y - shooter.y
-                    distance = math.hypot(dx, dy)
-                    angle_to_target = math.atan2(dy, dx)
-                    angle_diff = abs(self.normalize_angle(shooter.angle - angle_to_target))
-                    if distance <= self.SHOOT_RANGE and angle_diff <= self.SHOOT_ANGLE:
-                        target.health -= self.DAMAGE
-                        shooter.damage_inflicted += self.DAMAGE
+            self._process_shooter_shot(shooter)
+
+    def _process_shooter_shot(self, shooter):
+        last_action = getattr(shooter, "last_action", None)
+        if last_action is None or last_action[2] <= 0.5:
+            return
+
+        for target in self.robots:
+            if target != shooter:
+                self._check_and_apply_hit(shooter, target)
+
+    def _check_and_apply_hit(self, shooter, target):
+        dx = target.x - shooter.x
+        dy = target.y - shooter.y
+        distance = math.hypot(dx, dy)
+        angle_to_target = math.atan2(dy, dx)
+        angle_diff = abs(self.normalize_angle(shooter.angle - angle_to_target))
+        
+        if distance <= self.SHOOT_RANGE and angle_diff <= self.SHOOT_ANGLE:
+            target.health -= self.DAMAGE
+            shooter.damage_inflicted += self.DAMAGE
 
     def normalize_angle(self, angle):
         # normalize angle to [-pi, pi]

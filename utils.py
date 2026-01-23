@@ -95,8 +95,8 @@ def compute_fitness(robot1, robot2, steps):
 class RandomWrapper:
     def __init__(self):
         self.controller = RandomController()
-    def activate(self, sensors):
-        return self.controller.act(sensors)
+    def activate(self, _):
+        return self.controller.act()
 
 class StaticWrapper:
     def __init__(self):

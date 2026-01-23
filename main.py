@@ -12,9 +12,33 @@ import sys
 from utils import print_ascii_logo, eval_genomes, test_best_genome_against_random_opponents, print_summary
 GENERATIONS = 15
 
+def process_results(results, crushing_threshold=50.0):
+    wins = 0
+    crushing_wins = 0
+    draws = 0
+    losses = 0
+    crushing_losses = 0
+
+    for _, _, f1, f2, _ in results:
+        diff = f1 - f2
+        if abs(diff) < 1.0:
+            draws += 1
+        elif diff > 0:
+            if diff >= crushing_threshold:
+                crushing_wins += 1
+            else:
+                wins += 1
+        else:
+            if -diff >= crushing_threshold:
+                crushing_losses += 1
+            else:
+                losses += 1
+    
+    return wins, crushing_wins, draws, losses, crushing_losses
+
+
 def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     start_time = time.time()
-    start_time_str = datetime.datetime.now().strftime("%H:%M:%S")
     print_ascii_logo()
     # Set random seed for reproducibility, used in genome evaluation
     # when the other istances use the same seed, the genomes will be the same
@@ -95,26 +119,7 @@ def main(verbose: bool = False, generations: int = None, pop_size: int = None):
     crushing_threshold = 50.0
 
     total_matches = len(results)
-    wins = 0
-    crushing_wins = 0
-    draws = 0
-    losses = 0
-    crushing_losses = 0
-
-    for _, _, f1, f2, _ in results:
-        diff = f1 - f2
-        if abs(diff) < 1.0:
-            draws += 1
-        elif diff > 0:
-            if diff >= crushing_threshold:
-                crushing_wins += 1
-            else:
-                wins += 1
-        else:
-            if -diff >= crushing_threshold:
-                crushing_losses += 1
-            else:
-                losses += 1
+    wins, crushing_wins, draws, losses, crushing_losses = process_results(results, crushing_threshold)
 
     effective_wins = wins + crushing_wins
     win_rate = (effective_wins / total_matches) if total_matches > 0 else 0.0

@@ -9,7 +9,7 @@ class RandomController:
     Basic controller generating random actions for movement and shooting.
     Useful as a baseline for performance evaluation.
     """
-    def act(self, sensors):
+    def act(self):
         steering = random.uniform(-1, 1)
         throttle = random.uniform(0, 1)
         shoot = random.random() < 0.1
