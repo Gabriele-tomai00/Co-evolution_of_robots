@@ -121,7 +121,7 @@ def worker_random_battle(args):
     genome_id, net = args
     # We need to recreate RandomWrapper here to ensure new random state/opponent
     opponent = RandomWrapper()
-    f_genome, f_random = simulate_battle(net, opponent)
+    f_genome, _ = simulate_battle(net, opponent)
     return genome_id, f_genome
 
 

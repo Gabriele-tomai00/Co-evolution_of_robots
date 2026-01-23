@@ -50,7 +50,6 @@ class AggressiveChaser:
         and shoots when aligned.
         """
         angle_diff = sensors[1]
-        distance = sensors[0]
         
         # Steer towards opponent
         steering = angle_diff * 5.0
