@@ -42,6 +42,7 @@ def main(verbose: bool = False, generations: int = None, pop_size: int = None):
 
     print("\n=== PHASE 1: Evolving robots with NEAT ===")
     print(f"Generations: {n_generations}")
+    print(f"Population size: {config.pop_size}")
 
     # Report evolution progress and statistics
     if verbose:
