@@ -1,5 +1,7 @@
 # Co-evolution_of_robots
 
+[![Build](https://github.com/Gabriele-tomai00/Co-evolution_of_robots/actions/workflows/build.yml/badge.svg)](https://github.com/Gabriele-tomai00/Co-evolution_of_robots/actions/workflows/build.yml)
+
 Python project for the *Optimization for Artificial Intelligence* exam.
 
 The goal is to study competitive co-evolution using NEAT (NeuroEvolution of Augmenting Topologies).  
