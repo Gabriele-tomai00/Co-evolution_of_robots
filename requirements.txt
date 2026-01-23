@@ -1,2 +1,5 @@
 neat-python>=0.92
 tabulate
+jupyter
+pandas
+matplotlib
