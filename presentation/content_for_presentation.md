@@ -52,6 +52,27 @@ These parameters jointly control exploration (mutation, structural changes) and 
 
 ---
 
+
+SLIDES
+
+1) Simulation environment: spiego di cosa si tratta
+
+2) Main classes 1/3: inizio a spiegare le classi principali. IN questa slide ho Arena e Robot
+
+3) Main classes 2/3: Baseline Controller (con Random, Static, Aggressive controller)
+
+4) Main classes 3/3: Sensor, neat.nn.FeedForwardNetwork
+
+5) Sensor and NN: sensori normalizzati, input e ouput
+
+6) fitness calculation: hybrid fitness (internal + external), Fitness function (quando si guadanano punti), i 3 aspetti (vittoria, aggressione, sopravvivenza)
+
+7) Evolutional Cycle: cosa succede per ogni generazione: initial population, co-evolution, external validation, fitness calculation, selection, mutation e crossover, e finisce di nuovo in initial population
+
+8) Final test: il winner contro i Random robots: random static e chaser
+
+9) Some results: qui mostro grafici che confrontano interna ed esterna fitness (diversi grafici in cui ho cambiato il numero di genreazioni, elitismo e numero degli indivdui della popolazione).
+
 # Scaletta Presentazione (15 minuti)
 
 ## 1. Introduzione e Obiettivi (2 min)
