@@ -16,7 +16,7 @@ class Sensors:
     def get(robot, arena):
         """
         Compute the sensor vector for a robot inside the arena.
-        Returns a list of floats with fixed size and ordering.
+        Returns a list of 7 floats with fixed size and ordering.
         """
 
         opponent = Sensors._get_opponent(robot, arena)
