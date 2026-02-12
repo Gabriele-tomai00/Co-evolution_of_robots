@@ -1,5 +1,10 @@
 fitness_history.csv
 
+# tests
+coverage.xml
+.coverage
+htmlcov/
+
 
 .DS_Store
 best_robot.pkl
