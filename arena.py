@@ -3,6 +3,7 @@
 #    Degree Program: Computer Engineering
 
 import math
+from sensors import Sensors
 
 class Arena:
     """
@@ -18,6 +19,9 @@ class Arena:
         self.DAMAGE = 10  # health points per hit
         self.SHOOT_RANGE = 0.2  # max distance for conditional hit
         self.SHOOT_ANGLE = math.radians(30)  # max angle difference for conditional hit
+
+    def get_sensors(self, robot):
+        return Sensors.get(robot, self)
 
     def step(self):
         """
